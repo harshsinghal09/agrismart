@@ -65,7 +65,7 @@ export default function ChatWidget() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">AgriSmart Assistant</p>
-              <p className="text-xs text-green-400">Powered by Gemini AI</p>
+              <p className="text-xs text-green-400"></p>
             </div>
             <div className="ml-auto w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           </div>
