@@ -30,7 +30,7 @@ export default function CropTool() {
     setResult(null);
     try {
       const res = await analyzeCrop({ ...form, language: lang });
-      setResult(res.data);
+      setResult(res.data.data);
       toast.success('Analysis complete!');
     } catch (e) {
       toast.error(e.message || t('error_generic'));
