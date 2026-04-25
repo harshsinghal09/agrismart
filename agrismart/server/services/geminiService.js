@@ -2,13 +2,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'demo-key');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const getModel = (vision = false) =>
-  genAI.getGenerativeModel({ model: vision ? 'gemini-flash-latest' : 'gemini-flash-latest' });
+  genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
 /**
- * Safely parse JSON from Gemini response — strips markdown fences if present
+ * SAFE JSON PARSER (never crashes)
  */
 const parseJSON = (text) => {
   try {
@@ -24,146 +24,157 @@ const parseJSON = (text) => {
       return JSON.parse(cleaned.substring(start, end + 1));
     }
 
-    throw new Error("No JSON found");
+    console.log("❌ NO JSON FOUND:", text);
+    return null;
+
   } catch (err) {
-    throw new Error("Invalid JSON from Gemini");
+    console.log("❌ PARSE ERROR:", text);
+    return null;
   }
 };
 
 /**
- * Generate crop recommendations
+ * CROP RECOMMENDATIONS
  */
 export const getCropRecommendations = async ({ soilType, location, season, language = 'en' }) => {
   const langNote = language === 'hi' ? 'Respond in Hindi language.' : 'Respond in English.';
   const model = getModel();
 
-  const prompt = `You are an expert Indian agricultural advisor with 20+ years of experience.
+  const prompt = `You are an expert Indian agricultural advisor.
 ${langNote}
 
-Given:
-- Soil Type: ${soilType}
-- Location/State: ${location}
-- Season: ${season}
+Soil: ${soilType}
+Location: ${location}
+Season: ${season}
 
-Provide detailed crop recommendations. Return ONLY valid JSON (no markdown, no extra text):
+Return ONLY JSON:
 {
-  "cropSuggestions": [
-    {
-      "name": "crop name",
-      "variety": "recommended variety",
-      "expectedYield": "yield per acre",
-      "marketPrice": "approximate price per quintal",
-      "growthDuration": "days to harvest",
-      "waterRequirement": "low/medium/high",
-      "suitability": "percentage match score 0-100"
-    }
-  ],
-  "bestSeason": "ideal planting window",
-  "soilPreparation": "brief soil prep advice",
-  "weatherRisk": "key weather risks for this season/location",
-  "confidence": "overall recommendation confidence percentage",
-  "tips": ["tip1", "tip2", "tip3"]
+  "cropSuggestions": [],
+  "bestSeason": "",
+  "soilPreparation": "",
+  "weatherRisk": "",
+  "confidence": "",
+  "tips": []
 }`;
 
- const result = await model.generateContent(prompt);
-const text = result.response.text();
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-console.log("🔥 GEMINI RAW:", text);
+    console.log("🔥 GEMINI RAW:", text);
 
-try {
-  return parseJSON(text);
-} catch (err) {
-  console.log("❌ JSON PARSE FAILED:", text);
+    return parseJSON(text) || {
+      cropSuggestions: [],
+      bestSeason: "N/A",
+      soilPreparation: "Fallback",
+      weatherRisk: "Unknown",
+      confidence: 0,
+      tips: ["Retry"]
+    };
 
-  return {
-    cropSuggestions: [],
-    bestSeason: "N/A",
-    soilPreparation: "Could not parse AI response",
-    weatherRisk: "Unknown",
-    confidence: 0,
-    tips: ["Try again"]
-  };
-}
+  } catch (err) {
+    console.log("❌ GEMINI ERROR:", err.message);
+
+    return {
+      cropSuggestions: [],
+      bestSeason: "N/A",
+      soilPreparation: "Gemini failed",
+      weatherRisk: "Unknown",
+      confidence: 0,
+      tips: ["Check API key"]
+    };
+  }
 };
 
 /**
- * Generate fertilizer advice
+ * FERTILIZER ADVICE
  */
 export const getFertilizerAdvice = async ({ cropType, soilType, farmSize, language = 'en' }) => {
   const langNote = language === 'hi' ? 'Respond in Hindi language.' : 'Respond in English.';
   const model = getModel();
 
-  const prompt = `You are an expert soil scientist and agricultural advisor.
-${langNote}
+  const prompt = `Give fertilizer plan in JSON only for:
+Crop: ${cropType}, Soil: ${soilType}, Size: ${farmSize}`;
 
-Given:
-- Crop: ${cropType}
-- Soil Type: ${soilType}
-- Farm Size: ${farmSize} acres
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-Provide a complete fertilizer plan. Return ONLY valid JSON:
-{
-  "fertilizerPlan": [
-    {
-      "stage": "growth stage name",
-      "timing": "when to apply",
-      "fertilizers": [
-        {
-          "name": "fertilizer name",
-          "type": "organic/chemical/bio",
-          "quantityPerAcre": "amount",
-          "method": "application method"
-        }
-      ]
-    }
-  ],
-  "totalCost": "estimated cost for ${farmSize} acres in INR",
-  "soilAmendments": "any soil amendments needed",
-  "organicAlternatives": "organic options available",
-  "precautions": ["precaution1", "precaution2"],
-  "confidence": "recommendation confidence percentage"
-}`;
+    console.log("🔥 FERTILIZER RAW:", text);
 
-  const result = await model.generateContent(prompt);
-  return parseJSON(result.response.text());
+    return parseJSON(text) || {
+      fertilizerPlan: [],
+      totalCost: "N/A",
+      soilAmendments: "Fallback",
+      organicAlternatives: "N/A",
+      precautions: ["Retry"],
+      confidence: 0
+    };
+
+  } catch (err) {
+    console.log("❌ FERTILIZER ERROR:", err.message);
+
+    return {
+      fertilizerPlan: [],
+      totalCost: "N/A",
+      soilAmendments: "Error",
+      organicAlternatives: "N/A",
+      precautions: ["Try again"],
+      confidence: 0
+    };
+  }
 };
 
 /**
- * Detect plant disease from image
+ * DISEASE DETECTION
  */
 export const detectPlantDisease = async (imageBase64, mimeType = 'image/jpeg', language = 'en') => {
-  const langNote = language === 'hi' ? 'Respond in Hindi language.' : 'Respond in English.';
   const model = getModel(true);
 
-  const prompt = `You are an expert plant pathologist.
-${langNote}
-Analyze this plant image and diagnose any disease or health issue.
-Return ONLY valid JSON:
-{
-  "diseaseName": "name of disease or 'Healthy Plant' if no disease",
-  "confidence": "detection confidence percentage",
-  "severity": "mild/moderate/severe/none",
-  "affectedParts": ["leaf", "stem", etc],
-  "symptoms": ["symptom1", "symptom2"],
-  "causes": "what causes this disease",
-  "treatment": {
-    "immediate": ["immediate action 1", "immediate action 2"],
-    "chemical": ["chemical treatment options"],
-    "organic": ["organic/natural treatment options"]
-  },
-  "prevention": ["prevention tip 1", "prevention tip 2"],
-  "spreadRisk": "low/medium/high",
-  "estimatedYieldLoss": "percentage if untreated"
-}`;
+  const prompt = `Analyze plant image and return JSON only`;
 
-  const result = await model.generateContent([
-    prompt,
-    {
-      inlineData: {
-        data: imageBase64,
-        mimeType,
+  try {
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType,
+        },
       },
-    },
-  ]);
-  return parseJSON(result.response.text());
+    ]);
+
+    const text = result.response.text();
+
+    console.log("🔥 DISEASE RAW:", text);
+
+    return parseJSON(text) || {
+      diseaseName: "Unknown",
+      confidence: 0,
+      severity: "unknown",
+      affectedParts: [],
+      symptoms: [],
+      causes: "Fallback",
+      treatment: { immediate: [], chemical: [], organic: [] },
+      prevention: ["Retry"],
+      spreadRisk: "unknown",
+      estimatedYieldLoss: "unknown"
+    };
+
+  } catch (err) {
+    console.log("❌ DISEASE ERROR:", err.message);
+
+    return {
+      diseaseName: "Error",
+      confidence: 0,
+      severity: "unknown",
+      affectedParts: [],
+      symptoms: [],
+      causes: "API failed",
+      treatment: { immediate: [], chemical: [], organic: [] },
+      prevention: ["Try again"],
+      spreadRisk: "unknown",
+      estimatedYieldLoss: "unknown"
+    };
+  }
 };
