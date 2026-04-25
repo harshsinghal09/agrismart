@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://agrismart-5q8f.onrender.com',
+  baseURL: 'https://agrismart-5q8f.onrender.com/api',
   timeout: 60000,
   headers: { 'Content-Type': 'application/json' },
 });
