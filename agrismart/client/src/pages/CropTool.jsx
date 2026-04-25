@@ -33,10 +33,8 @@ export default function CropTool() {
       setResult(res);
       toast.success('Analysis complete!');
     } catch (e) {
-  console.log("🔥 FULL ERROR:", e);
-  console.log("🔥 RESPONSE:", e.response);
-  console.log("🔥 DATA:", e.response?.data);
-  toast.error(e.message);
+  console.log("ERROR:", e);
+  toast.error(e.message || "Something went wrong");
 }
     } finally {
       setLoading(false);
