@@ -11,8 +11,23 @@ const getModel = (vision = false) =>
  * Safely parse JSON from Gemini response — strips markdown fences if present
  */
 const parseJSON = (text) => {
-  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(cleaned);
+  try {
+    const cleaned = text
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+
+    if (start !== -1 && end !== -1) {
+      return JSON.parse(cleaned.substring(start, end + 1));
+    }
+
+    throw new Error("No JSON found");
+  } catch (err) {
+    throw new Error("Invalid JSON from Gemini");
+  }
 };
 
 /**
@@ -50,9 +65,25 @@ Provide detailed crop recommendations. Return ONLY valid JSON (no markdown, no e
   "tips": ["tip1", "tip2", "tip3"]
 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+ const result = await model.generateContent(prompt);
+const text = result.response.text();
+
+console.log("🔥 GEMINI RAW:", text);
+
+try {
   return parseJSON(text);
+} catch (err) {
+  console.log("❌ JSON PARSE FAILED:", text);
+
+  return {
+    cropSuggestions: [],
+    bestSeason: "N/A",
+    soilPreparation: "Could not parse AI response",
+    weatherRisk: "Unknown",
+    confidence: 0,
+    tips: ["Try again"]
+  };
+}
 };
 
 /**
