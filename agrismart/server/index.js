@@ -15,9 +15,11 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'https://agrismart-client.onrender.com',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: [
+    'https://agrismart-client.onrender.com',
+    'http://localhost:5173'
+  ],
+  credentials: true
 }));
 
 // Rate limiter
