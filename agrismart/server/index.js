@@ -57,9 +57,9 @@ const startServer = async () => {
     } else {
       console.log('⚠️  No MONGO_URI set — running without database');
     }
-    app.listen(PORT, () => {
-      console.log(`🚀 AgriSmart AI server running on http://localhost:${PORT}`);
-    });
+   app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
   } catch (err) {
     console.error('❌ Server startup error:', err.message);
     process.exit(1);
