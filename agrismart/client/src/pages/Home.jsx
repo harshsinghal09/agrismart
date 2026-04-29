@@ -135,7 +135,7 @@ export default function Home() {
           </h2>
           <p className="text-green-200/70 mb-8 relative z-10">Join millions of farmers already using AI to boost their harvest.</p>
           <Link to="/crop" className="btn-primary inline-flex items-center gap-2 relative z-10 text-base px-8 py-4">
-            Start Free Analysis <ArrowRight size=18 />
+            Start Free Analysis <ArrowRight size={18} />
           </Link>
         </div>
       </section>
